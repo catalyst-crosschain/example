@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    --background: 270 50% 5%;
+    --foreground: 270 10% 95%;
+
+    --card: 270 50% 10%;
+    --card-foreground: 270 10% 95%;
+ 
+    --popover: 270 50% 10%;
+    --popover-foreground: 270 10% 95%;
+ 
+    --primary: 270 50% 50%;
+    --primary-foreground: 270 10% 95%;
+ 
+    --secondary: 270 30% 30%;
+    --secondary-foreground: 270 10% 95%;
+ 
+    --muted: 270 30% 20%;
+    --muted-foreground: 270 10% 70%;
+ 
+    --accent: 270 30% 30%;
+    --accent-foreground: 270 10% 95%;
+ 
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 270 10% 95%;
+
+    --border: 270 30% 30%;
+    --input: 270 30% 30%;
+    --ring: 270 50% 50%;
+ 
+    --radius: 0;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-[hsl(var(--border))];
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Rajdhani', sans-serif;
+  }
+}
+
+.skins-slider .slick-list {
+  overflow: visible;
+  padding-top: 10vh !important;
+  padding-bottom: 10vh !important;
+}
+
+.skins-slider .slick-slide {
+  opacity: 0.5;
+  transition: all 0.3s ease;
+  transform: scale(0.85);
+}
+
+.skins-slider .slick-center {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.skins-slider .slick-slide > div {
+  display: flex;
+  justify-content: center;
+}
+
+.skins-slider .slick-prev,
+.skins-slider .slick-next {
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+}
+
+.skins-slider .slick-prev:before,
+.skins-slider .slick-next:before {
+  font-size: 40px;
+  color: theme('colors.purple.500');
+}
+
+.skins-slider .slick-prev {
+  left: 2%;
+}
+
+.skins-slider .slick-next {
+  right: 2%;
+}
+
+@media (min-width: 1024px) {
+  .skins-slider .slick-prev {
+    left: 10%;
+  }
+  
+  .skins-slider .slick-next {
+    right: 10%;
+  }
+}

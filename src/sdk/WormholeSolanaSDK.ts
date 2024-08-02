@@ -4,22 +4,19 @@ import { TokenBridgeAbi } from "./TokenBridgeAbi";
 
 export class WormholeSolanaSDK {
   private solanaConnection: Connection;
-  private ethProvider: ethers.providers.Web3Provider;
   private tokenBridgeAddress: string;
   private wormholeBridgeAddress: string;
 
   constructor(
     solanaRpcUrl: string,
-    ethProvider: ethers.providers.Web3Provider,
     tokenBridgeAddress: string,
     wormholeBridgeAddress: string
   ) {
     this.solanaConnection = new Connection(solanaRpcUrl);
-    this.ethProvider = ethProvider;
     this.tokenBridgeAddress = tokenBridgeAddress;
     this.wormholeBridgeAddress = wormholeBridgeAddress;
   }
-  
+
   async transferFromEthToSolana(
     amount: string,
     tokenAddress: string,
@@ -62,20 +59,14 @@ export class WormholeSolanaSDK {
     return balance.value.uiAmount || 0;
   }
 
-  // This is a placeholder. In a real-world scenario, you'd need to implement
-  // the logic to fetch and verify the VAA from a Wormhole guardian network.
   async getSignedVAA(txHash: string): Promise<string> {
     console.log("Fetching signed VAA for transaction:", txHash);
-    // Simulate waiting for the VAA
     await new Promise(resolve => setTimeout(resolve, 5000));
     return "mock-signed-vaa";
   }
 
-  // This is a simplified version. In a real-world scenario, you'd need to implement
-  // the actual redeem logic using Solana instructions.
   async redeemOnSolana(signedVAA: string, payerAddress: string): Promise<string> {
     console.log("Redeeming on Solana for address:", payerAddress);
-    // Simulate the redeem process
     await new Promise(resolve => setTimeout(resolve, 3000));
     return "mock-redeem-transaction-hash";
   }

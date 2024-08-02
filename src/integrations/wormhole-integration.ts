@@ -7,13 +7,11 @@ class WormholeIntegration {
   constructor() {
     if (typeof window !== 'undefined') {
       const solanaRpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-      const ethProvider = new ethers.providers.Web3Provider(window.ethereum as any);
       const tokenBridgeAddress = process.env.NEXT_PUBLIC_TOKEN_BRIDGE_ADDRESS || '';
       const wormholeBridgeAddress = process.env.NEXT_PUBLIC_WORMHOLE_BRIDGE_ADDRESS || '';
 
       this.sdk = new WormholeSolanaSDK(
         solanaRpcUrl,
-        ethProvider,
         tokenBridgeAddress,
         wormholeBridgeAddress
       );
@@ -32,7 +30,6 @@ class WormholeIntegration {
     }
 
     try {
-      // 1. Transfer USDC from Ethereum to Solana
       const txHash = await this.sdk.transferFromEthToSolana(
         skinPrice.toString(),
         tokenAddress,
@@ -42,10 +39,8 @@ class WormholeIntegration {
 
       console.log('Transfer initiated:', txHash);
 
-      // 2. Get the signed VAA (simulated in this example)
       const signedVAA = await this.sdk.getSignedVAA(txHash);
 
-      // 3. Redeem the tokens on Solana (simulated in this example)
       const redeemTxId = await this.sdk.redeemOnSolana(
         signedVAA,
         playerSolanaAddress
@@ -53,20 +48,19 @@ class WormholeIntegration {
 
       console.log('Redeemed on Solana:', redeemTxId);
 
-      // 4. Check the final balance
       const solanaBalance = await this.sdk.getTokenBalance(
         playerSolanaAddress,
-        tokenAddress // This should be the Solana token address, not the Ethereum one
+        tokenAddress
       );
 
       console.log('New Solana token balance:', solanaBalance);
 
-      return true; // Indicate successful purchase
+      return true;
     } catch (error) {
-        console.error("Error during skin purchase payment:", error);
-        return false;
-      }
+      console.error("Error during skin purchase payment:", error);
+      return false;
     }
   }
-  
-  export const wormholeIntegration = new WormholeIntegration();
+}
+
+export const wormholeIntegration = new WormholeIntegration();

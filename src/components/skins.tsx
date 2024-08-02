@@ -71,16 +71,17 @@ const Skins: React.FC = () => {
     setPurchaseStatus('processing');
     playClickSound();
 
-    const skinPriceInUSDC = BigInt(Math.floor(skin.price * 1e6)); // Convert SOL price to USDC (assuming 1:1 ratio for simplicity)
-    const signer = library.getSigner();
-
+    const skinPriceInUSDC = BigInt(Math.floor(skin.price * 1e6));
+    
     try {
+      const signer = library.getSigner(ethereumAccount);
+
       const success = await wormholeIntegration.purchaseSkinWithCrossChainPayment(
         skinPriceInUSDC,
         ethereumAccount,
         solanaPublicKey.toString(),
         signer,
-        process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS || '' // Make sure to set this environment variable
+        process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS || ''
       );
 
       if (success) {

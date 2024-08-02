@@ -9,10 +9,18 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@certusone/wormhole-sdk": "^0.9.11",
     "@radix-ui/react-dialog": "^1.0.4",
     "@radix-ui/react-slot": "^1.0.2",
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-react": "^0.15.35",
+    "@solana/wallet-adapter-react-ui": "^0.9.35",
+    "@solana/wallet-adapter-wallets": "^0.19.32",
+    "@solana/web3.js": "^1.95.2",
+    "@usedapp/core": "^1.2.16",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+    "ethers": "^5.7.2",
     "framer-motion": "^11.3.7",
     "lucide-react": "^0.263.1",
     "next": "14.2.5",
@@ -30,9 +38,18 @@
     "@types/react-slick": "^0.23.13",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",
+    "pino-pretty": "^11.2.2",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",
     "typescript": "^5.5.3",
     "use-sound": "^4.0.3"
+  },
+  "browser": {
+    "fs": false,
+    "net": false,
+    "tls": false
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

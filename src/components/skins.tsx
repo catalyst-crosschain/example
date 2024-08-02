@@ -1,4 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+'use client';
+
+import React, { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +16,10 @@ import useSound from 'use-sound';
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { motion } from 'framer-motion';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useEthers } from '@usedapp/core';
+import { wormholeIntegration } from '@/integrations/wormhole-integration';
+import { ethers } from 'ethers';
 
 const skins = [
   { id: 1, name: "Dragon's Breath", price: 0.5, image: "/rifle-skin-1.jpg" },
@@ -30,6 +36,10 @@ const Skins: React.FC = () => {
   const [playScrollSound] = useSound('/click-sound.mp3');
   const [playClickSound] = useSound('/click-sound.mp3');
   const sliderRef = useRef<Slider | null>(null);
+  const [purchaseStatus, setPurchaseStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+
+  const { publicKey: solanaPublicKey } = useWallet();
+  const { account: ethereumAccount, library } = useEthers();
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -52,12 +62,38 @@ const Skins: React.FC = () => {
     };
   }, [playScrollSound]);
 
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, []);
+  const handlePurchase = async (skin: typeof skins[0]) => {
+    if (!solanaPublicKey || !ethereumAccount || !library) {
+      alert("Please connect both Solana and Ethereum wallets");
+      return;
+    }
+
+    setPurchaseStatus('processing');
+    playClickSound();
+
+    const skinPriceInUSDC = BigInt(Math.floor(skin.price * 1e6)); // Convert SOL price to USDC (assuming 1:1 ratio for simplicity)
+    const signer = library.getSigner();
+
+    try {
+      const success = await wormholeIntegration.purchaseSkinWithCrossChainPayment(
+        skinPriceInUSDC,
+        ethereumAccount,
+        solanaPublicKey.toString(),
+        signer,
+        process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS || '' // Make sure to set this environment variable
+      );
+
+      if (success) {
+        setPurchaseStatus('success');
+        console.log(`Skin ${skin.name} purchased successfully!`);
+      } else {
+        setPurchaseStatus('error');
+      }
+    } catch (error) {
+      console.error("Error purchasing skin:", error);
+      setPurchaseStatus('error');
+    }
+  };
 
   const settings = {
     dots: false,
@@ -126,8 +162,9 @@ const Skins: React.FC = () => {
                       <Button 
                         className="w-full bg-violet-600 hover:bg-violet-700 text-white text-base py-2"
                         onClick={playClickSound}
+                        disabled={purchaseStatus === 'processing' || !solanaPublicKey || !ethereumAccount}
                       >
-                        Purchase
+                        {purchaseStatus === 'processing' ? 'Processing...' : 'Purchase'}
                       </Button>
                     </motion.div>
                   </DialogTrigger>
@@ -135,27 +172,26 @@ const Skins: React.FC = () => {
                     <DialogHeader>
                       <DialogTitle className="text-2xl text-purple-300">Purchase {skin.name}</DialogTitle>
                       <DialogDescription className="text-purple-400 text-lg">
-                        You are about to purchase {skin.name} for {skin.price} SOL.
+                        You are about to purchase {skin.name} for {skin.price} SOL using USDC from Ethereum.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="flex justify-between mt-6">
                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                         <Button 
                           className="bg-violet-600 hover:bg-violet-700 text-white text-lg py-3 px-6"
-                          onClick={playClickSound}
+                          onClick={() => handlePurchase(skin)}
+                          disabled={purchaseStatus === 'processing'}
                         >
-                          Buy with Solana
-                        </Button>
-                      </motion.div>
-                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                        <Button 
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 px-6"
-                          onClick={playClickSound}
-                        >
-                          Buy with Ethereum
+                          {purchaseStatus === 'processing' ? 'Processing...' : 'Confirm Purchase'}
                         </Button>
                       </motion.div>
                     </div>
+                    {purchaseStatus === 'success' && (
+                      <p className="text-green-400 mt-4">Purchase successful! The skin will be added to your inventory.</p>
+                    )}
+                    {purchaseStatus === 'error' && (
+                      <p className="text-red-400 mt-4">An error occurred during the purchase. Please try again.</p>
+                    )}
                   </DialogContent>
                 </Dialog>
               </div>

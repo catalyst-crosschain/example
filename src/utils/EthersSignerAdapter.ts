@@ -2,7 +2,7 @@ import { Signer as EthersSigner } from "ethers";
 import { Signer, SignedTx, UnsignedTransaction } from "@wormhole-foundation/sdk";
 
 export class EthersSignerAdapter implements Signer {
-  constructor(private ethersSigner: EthersSigner, private chainName: ChainName) {}
+  constructor(private ethersSigner: EthersSigner, private chainName: string) {}
 
   async sign(transactions: UnsignedTransaction[]): Promise<SignedTx[]> {
     return Promise.all(
@@ -13,11 +13,11 @@ export class EthersSignerAdapter implements Signer {
     );
   }
 
-  async address(): Promise<string> {
-    return await this.ethersSigner.getAddress();
+  address(): string {
+    return this.ethersSigner.getAddress();
   }
 
-  chain(): ChainName {
+  chain(): string {
     return this.chainName;
   }
 }

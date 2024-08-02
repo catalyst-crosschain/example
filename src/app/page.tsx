@@ -4,16 +4,23 @@ import React from 'react';
 import Image from 'next/image';
 import Skins from '@/components/skins';
 import { Button } from '@/components/ui/button';
-import WalletModal from '@/components/ui/WalletModal';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useEthers } from '@usedapp/core';
 import useSound from 'use-sound';
 
 export default function Home() {
-  const [isWalletModalOpen, setIsWalletModalOpen] = React.useState(false);
+  const { connected: solanaConnected, connect: connectSolana } = useWallet();
+  const { activateBrowserWallet, account: ethereumAccount } = useEthers();
   const [playClickSound] = useSound('/click-sound.mp3');
 
-  const handleWalletClick = () => {
+  const handleWalletConnect = () => {
     playClickSound();
-    setIsWalletModalOpen(true);
+    if (!solanaConnected) {
+      connectSolana();
+    }
+    if (!ethereumAccount) {
+      activateBrowserWallet();
+    }
   };
 
   return (
@@ -22,22 +29,17 @@ export default function Home() {
         <header className="p-4 flex justify-between items-center">
           <Image src="/game-logo.svg" alt="Game Logo" width={40} height={40} />
           <Button
-            onClick={handleWalletClick}
+            onClick={handleWalletConnect}
             className="bg-purple-600 hover:bg-purple-700 text-white"
           >
-            Connect Wallet
+            {solanaConnected && ethereumAccount ? 'Wallets Connected' : 'Connect Wallets'}
           </Button>
         </header>
         
         <section className="flex-grow">
-          <h1 className="text-3xl font-bold mb-4 text-center text-gray-300 tracking-wider">equip skin for your rifle!</h1>
+          <h1 className="text-3xl font-bold mb-4 text-center text-gray-300 tracking-wider">Equip skin for your rifle!</h1>
           <Skins />
         </section>
-
-        <WalletModal 
-          isOpen={isWalletModalOpen} 
-          onClose={() => setIsWalletModalOpen(false)}
-        />
       </div>
     </main>
   );

@@ -39,7 +39,7 @@ const Skins: React.FC = () => {
   const [purchaseStatus, setPurchaseStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
 
   const { publicKey: solanaPublicKey } = useWallet();
-  const { account: ethereumAccount, library } = useEthers();
+  const { account: ethereumAccount, activateBrowserWallet } = useEthers();
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -63,7 +63,7 @@ const Skins: React.FC = () => {
   }, [playScrollSound]);
 
   const handlePurchase = async (skin: typeof skins[0]) => {
-    if (!solanaPublicKey || !ethereumAccount || !library) {
+    if (!solanaPublicKey || !ethereumAccount) {
       alert("Please connect both Solana and Ethereum wallets");
       return;
     }
@@ -74,7 +74,10 @@ const Skins: React.FC = () => {
     const skinPriceInUSDC = BigInt(Math.floor(skin.price * 1e6));
     
     try {
-      const signer = library.getSigner(ethereumAccount);
+      await activateBrowserWallet();
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum as any);
+      const signer = provider.getSigner();
 
       const success = await wormholeIntegration.purchaseSkinWithCrossChainPayment(
         skinPriceInUSDC,

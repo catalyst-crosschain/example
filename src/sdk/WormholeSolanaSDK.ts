@@ -1,74 +1,79 @@
-import { Connection, PublicKey } from "@solana/web3.js";
-import { ethers } from "ethers";
-import { TokenBridgeAbi } from "./TokenBridgeAbi";
+import {
+  wormhole,
+  TokenId,
+  ChainAddress,
+  TokenTransfer,
+  CircleTransfer,
+  Network,
+} from "@wormhole-foundation/sdk";
+import evm from "@wormhole-foundation/sdk/evm";
+import solana from "@wormhole-foundation/sdk/solana";
 
 export class WormholeSolanaSDK {
-  private solanaConnection: Connection;
-  private tokenBridgeAddress: string;
-  private wormholeBridgeAddress: string;
+  private whPromise: Promise<ReturnType<typeof wormhole>>;
 
-  constructor(
-    solanaRpcUrl: string,
-    tokenBridgeAddress: string,
-    wormholeBridgeAddress: string
-  ) {
-    this.solanaConnection = new Connection(solanaRpcUrl);
-    this.tokenBridgeAddress = tokenBridgeAddress;
-    this.wormholeBridgeAddress = wormholeBridgeAddress;
+  constructor(network: "Testnet" | "Mainnet") {
+    this.whPromise = this.initWormhole(network);
   }
 
-  async transferFromEthToSolana(
-    amount: string,
-    tokenAddress: string,
-    recipientSolanaAddress: string,
-    signer: ethers.Signer
-  ) {
-    const tokenBridgeContract = new ethers.Contract(
-      this.tokenBridgeAddress,
-      TokenBridgeAbi,
-      signer
-    );
+  private async initWormhole(network: "Testnet" | "Mainnet"): Promise<ReturnType<typeof wormhole>> {
+    return await wormhole(network, [evm, solana]);
+  }
 
-    const nonce = ethers.utils.hexlify(ethers.utils.randomBytes(4));
-    const recipientBytes32 = ethers.utils.hexZeroPad(new PublicKey(recipientSolanaAddress).toBuffer(), 32);
+  private async getWormhole(): Promise<ReturnType<typeof wormhole>> {
+    return await this.whPromise;
+  }
 
-    const tx = await tokenBridgeContract.transferTokens(
-      tokenAddress,
-      2, // CHAIN_ID_SOLANA
-      recipientBytes32,
+  async tokenTransfer(
+    token: TokenId,
+    amount: bigint,
+    sourceAddress: ChainAddress,
+    destinationAddress: ChainAddress,
+    automatic: boolean = false,
+    payload?: Uint8Array,
+    nativeGas?: bigint
+  ): Promise<TokenTransfer<Network>> {
+    const wh = await this.getWormhole();
+    return await wh.tokenTransfer(
+      token,
       amount,
-      0, // No relayer fee
-      nonce
+      sourceAddress,
+      destinationAddress,
+      automatic,
+      payload,
+      nativeGas
     );
-
-    const receipt = await tx.wait();
-    console.log("Transfer initiated:", receipt.transactionHash);
-    
-    return receipt.transactionHash;
   }
 
-  async getTokenBalance(publicKey: string, mintAddress: string): Promise<number> {
-    const account = await this.solanaConnection.getTokenAccountsByOwner(
-      new PublicKey(publicKey),
-      { mint: new PublicKey(mintAddress) }
+  async circleTransfer(
+    amount: bigint,
+    sourceAddress: ChainAddress,
+    destinationAddress: ChainAddress,
+    automatic: boolean = false,
+    payload?: Uint8Array,
+    nativeGas?: bigint
+  ): Promise<CircleTransfer<Network>> {
+    const wh = await this.getWormhole();
+    return await wh.circleTransfer(
+      amount,
+      sourceAddress,
+      destinationAddress,
+      automatic,
+      payload,
+      nativeGas
     );
-    if (account.value.length === 0) {
-      return 0;
-    }
-    const balance = await this.solanaConnection.getTokenAccountBalance(account.value[0].pubkey);
-    return balance.value.uiAmount || 0;
   }
 
-  async getSignedVAA(txHash: string): Promise<string> {
-    console.log("Fetching signed VAA for transaction:", txHash);
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    return "mock-signed-vaa";
+  async getChain(chainName: string) {
+    const wh = await this.getWormhole();
+    return wh.getChain(chainName);
   }
 
-  async redeemOnSolana(signedVAA: string, payerAddress: string): Promise<string> {
-    console.log("Redeeming on Solana for address:", payerAddress);
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    return "mock-redeem-transaction-hash";
+  async getTokenBalance(chain: string, tokenAddress: string, walletAddress: string): Promise<bigint> {
+    const wh = await this.getWormhole();
+    const chainContext = wh.getChain(chain);
+    const tokenBridge = await chainContext.getTokenBridge();
+    return await tokenBridge.getBalance(tokenAddress, walletAddress);
   }
 }
 

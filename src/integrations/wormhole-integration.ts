@@ -1,17 +1,22 @@
-import { Wormhole, TokenId, TokenTransfer, CircleTransfer, amount, signSendWait } from "@wormhole-foundation/sdk";
+import { wormhole, TokenId, TokenTransfer, CircleTransfer, amount, signSendWait, Network, Chain, TokenAddress } from "@wormhole-foundation/sdk";
 import evm from "@wormhole-foundation/sdk/evm";
 import solana from "@wormhole-foundation/sdk/solana";
 import { Signer as EthersSigner } from "ethers";
+import { EthersSignerAdapter } from '../utils/EthersSignerAdapter';
 
 class WormholeIntegration {
-  private wh: Wormhole;
+  private whPromise: Promise<ReturnType<typeof wormhole>>;
 
   constructor() {
-    this.initWormhole();
+    this.whPromise = this.initWormhole();
   }
 
-  private async initWormhole() {
-    this.wh = await Wormhole.init("Testnet", [evm, solana]);
+  private async initWormhole(): Promise<ReturnType<typeof wormhole>> {
+    return await wormhole("Testnet", [evm, solana]);
+  }
+
+  private async getWormhole(): Promise<ReturnType<typeof wormhole>> {
+    return await this.whPromise;
   }
 
   async purchaseSkinWithCrossChainPayment(
@@ -22,30 +27,41 @@ class WormholeIntegration {
     tokenAddress: string
   ) {
     try {
-      const sourceChain = this.wh.getChain("Ethereum");
-      const destinationChain = this.wh.getChain("Solana");
+      const wh = await this.getWormhole();
+      const sourceChain = wh.getChain("Ethereum");
+      const destinationChain = wh.getChain("Solana");
 
-      const sourceAddress = Wormhole.chainAddress("Ethereum", playerEthereumAddress);
-      const destinationAddress = Wormhole.chainAddress("Solana", playerSolanaAddress);
+      const sourceAddress = wh.chainAddress("Ethereum", playerEthereumAddress);
+      const destinationAddress = wh.chainAddress("Solana", playerSolanaAddress);
 
-      const token: TokenId = Wormhole.tokenId("Ethereum", tokenAddress);
+      const token: TokenId<"Ethereum"> = wh.tokenId("Ethereum", tokenAddress);
 
       const sndTb = await sourceChain.getTokenBridge();
 
-      const transfer = sndTb.transfer(sourceAddress.address, destinationAddress, token.address, skinPrice);
+      const transfer = sndTb.transfer(
+        sourceAddress.address as TokenAddress<"Ethereum">,
+        destinationAddress,
+        token.address,
+        skinPrice
+      );
 
       console.log("Starting transfer");
-      const srcTxids = await signSendWait(sourceChain, transfer, ethereumSigner);
+      const wormholeSigner = new EthersSignerAdapter(ethereumSigner, "Ethereum" as Chain);
+      const srcTxids = await signSendWait(sourceChain, transfer, wormholeSigner);
       console.log(`Started transfer: `, srcTxids);
 
       const [whm] = await sourceChain.parseTransaction(srcTxids[srcTxids.length - 1]!.txid);
 
       console.log("Getting Attestation");
-      const vaa = await this.wh.getVaa(whm!, "TokenBridge:Transfer", 60_000);
+      const vaa = await wh.getVaa(whm!, "TokenBridge:Transfer", 60_000);
       console.log(`Got Attestation: `, vaa);
 
       const rcvTb = await destinationChain.getTokenBridge();
       const redeem = rcvTb.redeem(playerSolanaAddress, vaa!);
+
+      // Note: You'll need to implement a way to sign and send this transaction on Solana
+      // const destTxids = await signSendWait(destinationChain, redeem, solanaSigner);
+      // console.log(`Completed Transfer: `, destTxids);
 
       const solanaBalance = await rcvTb.getBalance(tokenAddress, playerSolanaAddress);
       console.log('New Solana token balance:', solanaBalance.toString());
@@ -64,30 +80,36 @@ class WormholeIntegration {
     ethereumSigner: EthersSigner
   ) {
     try {
-      const sourceChain = this.wh.getChain("Ethereum");
-      const destinationChain = this.wh.getChain("Solana");
+      const wh = await this.getWormhole();
+      const sourceChain = wh.getChain("Ethereum");
+      const destinationChain = wh.getChain("Solana");
 
-      const sourceAddress = Wormhole.chainAddress("Ethereum", playerEthereumAddress);
-      const destinationAddress = Wormhole.chainAddress("Solana", playerSolanaAddress);
+      const sourceAddress = wh.chainAddress("Ethereum", playerEthereumAddress);
+      const destinationAddress = wh.chainAddress("Solana", playerSolanaAddress);
 
-      const transfer = await this.wh.circleTransfer(
+      const transfer = await wh.circleTransfer(
         skinPrice,
         sourceAddress,
         destinationAddress,
-        false // true for automatic transfer
+        false // Set to true for automatic transfer
       );
 
       const quote = await CircleTransfer.quoteTransfer(sourceChain, destinationChain, transfer.transfer);
       console.log("CCTP transfer quote:", quote);
 
       console.log("Starting Transfer");
-      const srcTxids = await transfer.initiateTransfer(ethereumSigner);
+      const wormholeSigner = new EthersSignerAdapter(ethereumSigner, "Ethereum" as Chain);
+      const srcTxids = await transfer.initiateTransfer(wormholeSigner);
       console.log(`Started Transfer: `, srcTxids);
 
       console.log("Waiting for Attestation");
       const attestIds = await transfer.fetchAttestation(60_000);
       console.log(`Got Attestation: `, attestIds);
-      
+
+      // Note: You'll need to implement a way to complete the transfer on Solana
+      // const dstTxids = await transfer.completeTransfer(solanaSigner);
+      // console.log(`Completed Transfer: `, dstTxids);
+
       return true;
     } catch (error) {
       console.error("Error during CCTP skin purchase payment:", error);

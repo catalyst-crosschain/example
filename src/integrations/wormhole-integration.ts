@@ -4,6 +4,7 @@ import solana from "@wormhole-foundation/sdk/solana";
 import { Signer as EthersSigner } from "ethers";
 import { EthersSignerAdapter } from '../utils/EthersSignerAdapter';
 import { Connection, PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 class WormholeIntegration {
   private whPromise: Promise<ReturnType<typeof wormhole>>;
@@ -46,17 +47,20 @@ class WormholeIntegration {
         skinPrice
       );
 
+      console.log("Starting transfer");
       const wormholeSigner = new EthersSignerAdapter(ethereumSigner, "Ethereum" as Chain);
       const srcTxids = await signSendWait(sourceChain, transfer, wormholeSigner);
       console.log(`Started transfer: `, srcTxids);
 
       const [whm] = await sourceChain.parseTransaction(srcTxids[srcTxids.length - 1]!.txid);
 
+      console.log("Getting Attestation");
       const vaa = await wh.getVaa(whm!, "TokenBridge:Transfer", 60_000);
       console.log(`Got Attestation: `, vaa);
 
       const rcvTb = await destinationChain.getTokenBridge();
       const redeem = rcvTb.redeem(destinationAddress.address as AccountAddress<"Solana">, vaa!);
+
       const solanaConnection = new Connection((destinationChain as any).rpc);
       const solanaTokenAccount = await this.findAssociatedTokenAddress(
         new PublicKey(playerSolanaAddress),
@@ -103,10 +107,6 @@ class WormholeIntegration {
       const attestIds = await transfer.fetchAttestation(60_000);
       console.log(`Got Attestation: `, attestIds);
 
-      // Note: You'll need to implement a way to complete the transfer on Solana
-      // const dstTxids = await transfer.completeTransfer(solanaSigner);
-      // console.log(`Completed Transfer: `, dstTxids);
-
       return true;
     } catch (error) {
       console.error("Error during CCTP skin purchase payment:", error);
@@ -121,10 +121,10 @@ class WormholeIntegration {
     return (await PublicKey.findProgramAddress(
       [
         walletAddress.toBuffer(),
-        solana.TOKEN_PROGRAM_ID.toBuffer(),
+        TOKEN_PROGRAM_ID.toBuffer(),
         tokenMintAddress.toBuffer(),
       ],
-      solana.ASSOCIATED_TOKEN_PROGRAM_ID
+      ASSOCIATED_TOKEN_PROGRAM_ID
     ))[0];
   }
 }

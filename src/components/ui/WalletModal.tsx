@@ -45,16 +45,17 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-purple-900 text-white max-w-md w-full">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-center">Connect Wallet</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-center">Connect Wallets</DialogTitle>
         </DialogHeader>
-        <AnimatePresence mode="wait">
-          {isLoading ? (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex justify-center items-center h-32"
+        <DialogDescription className="text-center mb-4">
+          Connect your Solana and Ethereum wallets to continue.
+        </DialogDescription>
+        <div className="flex flex-col gap-4">
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button 
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 text-lg font-semibold"
+              onClick={handleSolanaConnect}
+              disabled={solanaConnected}
             >
               <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-500"></div>
             </motion.div>

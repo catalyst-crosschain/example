@@ -16,6 +16,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 const network = WalletAdapterNetwork.Devnet;
 
+const ClientSideProviders = dynamic(() => import('../components/ClientSideProviders'), { ssr: false });
+
 export default function RootLayout({
   children,
 }: Readonly<{

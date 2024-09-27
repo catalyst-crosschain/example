@@ -56,12 +56,39 @@ const Skins: React.FC = () => {
     };
   }, [playScrollSound]);
 
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, []);
+  const handlePurchase = async (skin: typeof skins[0]) => {
+    if (!solanaPublicKey || !ethereumAccount || !library) {
+      alert("Please connect both Solana and Ethereum wallets");
+      return;
+    }
+
+    setPurchaseStatus('processing');
+    playClickSound();
+
+    const skinPriceInUSDC = BigInt(Math.floor(skin.price * 1e6)); // Convert SOL price to USDC (assuming 1:1 ratio for simplicity)
+    
+    try {
+      const signer = library.getSigner(ethereumAccount);
+
+      const success = await wormholeIntegration.purchaseSkinWithCrossChainPayment(
+        skinPriceInUSDC,
+        ethereumAccount,
+        solanaPublicKey.toString(),
+        signer,
+        process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS || ''
+      );
+
+      if (success) {
+        setPurchaseStatus('success');
+        console.log(`Skin ${skin.name} purchased successfully!`);
+      } else {
+        setPurchaseStatus('error');
+      }
+    } catch (error) {
+      console.error("Error purchasing skin:", error);
+      setPurchaseStatus('error');
+    }
+  };
 
   const settings = {
     dots: false,

@@ -1,4 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
+'use client';
+
+import React, { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,8 +15,11 @@ import Slider from "react-slick";
 import useSound from 'use-sound';
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import { motion, AnimatePresence } from 'framer-motion';
-import { useWalletContext } from './WalletProvider';
+import { motion } from 'framer-motion';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useEthers } from '@usedapp/core';
+import { wormholeIntegration } from '@/integrations/wormhole-integration';
+import { ethers } from 'ethers';
 
 const skins = [
   { id: 1, name: "Dragon's Breath", price: 0.5, image: "/rifle-skin-1.jpg" },
@@ -28,12 +33,13 @@ const skins = [
 ];
 
 const Skins: React.FC = () => {
-  const { solanaWallet, ethereumWallet, connectSolana, connectEthereum } = useWalletContext();
   const [playScrollSound] = useSound('/click-sound.mp3');
   const [playClickSound] = useSound('/click-sound.mp3');
   const sliderRef = useRef<Slider | null>(null);
-  const [selectedSkin, setSelectedSkin] = useState<any>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [purchaseStatus, setPurchaseStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+
+  const { publicKey: solanaPublicKey } = useWallet();
+  const { account: ethereumAccount, library } = useEthers();
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -103,42 +109,6 @@ const Skins: React.FC = () => {
     swipeToSlide: true,
   };
 
-  const handlePurchase = async (skin: any) => {
-    setSelectedSkin(skin);
-    setIsDialogOpen(true);
-    playClickSound();
-  };
-
-  // const handleBuyWithSolana = async () => {
-  //   if (!solanaWallet.connected) {
-  //     await connectSolana();
-  //   }
-  //   if (selectedSkin) {
-  //     const success = await purchaseWithSolana(selectedSkin.price);
-  //     if (success) {
-  //       alert(`Successfully purchased ${selectedSkin.name} with Solana!`);
-  //       setIsDialogOpen(false);
-  //     } else {
-  //       alert('Purchase failed. Please try again.');
-  //     }
-  //   }
-  // };
-
-  // const handleBuyWithEthereum = async () => {
-  //   if (!ethereumWallet) {
-  //     await connectEthereum();
-  //   }
-  //   if (selectedSkin) {
-  //     const success = await purchaseWithEthereum(selectedSkin.price);
-  //     if (success) {
-  //       alert(`Successfully purchased ${selectedSkin.name} with Ethereum!`);
-  //       setIsDialogOpen(false);
-  //     } else {
-  //       alert('Purchase failed. Please try again.');
-  //     }
-  //   }
-  // };
-
   return (
     <div className="w-full h-screen overflow-hidden">
       <Slider ref={sliderRef} {...settings} className="skins-slider h-full">
@@ -184,32 +154,52 @@ const Skins: React.FC = () => {
                 >
                   {skin.price} SOL
                 </motion.p>
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button 
-                    className="w-full bg-violet-600 hover:bg-violet-700 text-white text-base py-2"
-                    onClick={() => handlePurchase(skin)}
-                  >
-                    Purchase
-                  </Button>
-                </motion.div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Button 
+                        className="w-full bg-violet-600 hover:bg-violet-700 text-white text-base py-2"
+                        onClick={playClickSound}
+                        disabled={purchaseStatus === 'processing' || !solanaPublicKey || !ethereumAccount}
+                      >
+                        {purchaseStatus === 'processing' ? 'Processing...' : 'Purchase'}
+                      </Button>
+                    </motion.div>
+                  </DialogTrigger>
+                  <DialogContent className="bg-violet-900 bg-opacity-30 backdrop-blur-lg border border-violet-500 text-white">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl text-purple-300">Purchase {skin.name}</DialogTitle>
+                      <DialogDescription className="text-purple-400 text-lg">
+                        You are about to purchase {skin.name} for {skin.price} SOL using USDC from Ethereum.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-between mt-6">
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button 
+                          className="bg-violet-600 hover:bg-violet-700 text-white text-lg py-3 px-6"
+                          onClick={() => handlePurchase(skin)}
+                          disabled={purchaseStatus === 'processing'}
+                        >
+                          {purchaseStatus === 'processing' ? 'Processing...' : 'Confirm Purchase'}
+                        </Button>
+                      </motion.div>
+                    </div>
+                    {purchaseStatus === 'success' && (
+                      <p className="text-green-400 mt-4">Purchase successful! The skin will be added to your inventory.</p>
+                    )}
+                    {purchaseStatus === 'error' && (
+                      <p className="text-red-400 mt-4">An error occurred during the purchase. Please try again.</p>
+                    )}
+                  </DialogContent>
+                </Dialog>
               </div>
             </motion.div>
           </motion.div>
         ))}
       </Slider>
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="bg-violet-900 bg-opacity-30 backdrop-blur-lg border border-violet-500 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-2xl text-purple-300">Purchase {selectedSkin?.name}</DialogTitle>
-            <DialogDescription className="text-purple-400 text-lg">
-              You are about to purchase {selectedSkin?.name} for {selectedSkin?.price} SOL.
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
